@@ -18,7 +18,7 @@ import (
 
 const (
 	maxClientContextBytes = 3583
-	traceIdKey            = "uber-trace-id"
+	traceIDKey            = "uber-trace-id"
 	baggagePrefix         = "uberctx-"
 )
 
@@ -49,23 +49,22 @@ func AddToLambdaInvokeInput(spanCtx opentracing.SpanContext, input *lambda.Invok
 	}
 
 	clientContext := make(map[string]string)
-	clientContext[traceIdKey] = jaegerSpanCtx.String()
+	clientContext[traceIDKey] = jaegerSpanCtx.String()
 	jaegerSpanCtx.ForeachBaggageItem(func(k, v string) bool {
 		clientContext[baggagePrefix+k] = v
 		return true
 	})
 
-	ccJson, err := json.Marshal(clientContext)
+	ccJSON, err := json.Marshal(clientContext)
 	if err != nil {
 		return err
 	}
-	var ccJsonBase64 []byte
-	base64.StdEncoding.Encode(ccJsonBase64, ccJson)
-	if len(ccJsonBase64) > maxClientContextBytes {
+
+	enc := base64.StdEncoding
+	if enc.EncodedLen(len(ccJSON)) > maxClientContextBytes {
 		return ErrorTooMuchBaggage
 	}
-
-	input.ClientContext = aws.String(string(ccJsonBase64))
+	input.ClientContext = aws.String(enc.EncodeToString(ccJSON))
 	return nil
 }
 
@@ -80,7 +79,7 @@ func GetFromLambdaContext(ctx context.Context) (opentracing.SpanContext, error) 
 	if len(lambdaContext.ClientContext.Custom) == 0 {
 		return nil, nil
 	}
-	tmpCtx, err := jaeger.ContextFromString(lambdaContext.ClientContext.Custom[traceIdKey])
+	tmpCtx, err := jaeger.ContextFromString(lambdaContext.ClientContext.Custom[traceIDKey])
 	if err != nil {
 		return nil, err
 	}
