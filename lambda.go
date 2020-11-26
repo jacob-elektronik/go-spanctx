@@ -28,11 +28,19 @@ var (
 	ErrorJaegerSpanContextExpected = errors.New("span context implementation not supported")
 )
 
+func hasReqRespInvocationType(input *lambda.InvokeInput) bool {
+	if input.InvocationType == nil {
+		return true // since RequestResponse is the default
+	}
+	t := *input.InvocationType
+	return t == "" || t == lambda.InvocationTypeRequestResponse
+}
+
 func AddToLambdaInvokeInput(spanCtx opentracing.SpanContext, input *lambda.InvokeInput) error {
 	if spanCtx == nil {
 		return nil
 	}
-	if !(*input.InvocationType == "" || *input.InvocationType == lambda.InvocationTypeRequestResponse) {
+	if !hasReqRespInvocationType(input) {
 		return ErrorUnsupportedInvocationType
 	}
 	jaegerSpanCtx, ok := spanCtx.(jaeger.SpanContext)
