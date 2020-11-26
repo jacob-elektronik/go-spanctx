@@ -1,4 +1,4 @@
-module igitlab.jacob.run/development/spanctx-lib
+module github.com/fdegner/go-spanctx
 
 go 1.15
 

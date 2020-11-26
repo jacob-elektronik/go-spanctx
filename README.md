@@ -4,7 +4,7 @@
 [sns]: https://docs.aws.amazon.com/sns/latest/dg/SNSMessageAttributes.html
 [sqs]: https://docs.aws.amazon.com/AWSSimpleQueueService/latest/SQSDeveloperGuide/sqs-message-metadata.html
 
-# Span Context Lib
+# Span Context Module
  
 This module helps with the propagation of [Jaeger][jaeger] `SpanContext`s. It provides functions to add `SpanContext`s to AWS Lambda calls, as well as to AMQP, AWS SNS and AWS SQS messages.
 
