@@ -1,4 +1,4 @@
-module github.com/fdegner/go-spanctx
+module github.com/jacob-elektronik/go-spanctx
 
 go 1.15
 
