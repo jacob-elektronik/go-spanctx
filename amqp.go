@@ -25,6 +25,9 @@ func (c amqpHeaderCarrier) Set(key, val string) {
 }
 
 func AddToAMQPPublishing(spanCtx opentracing.SpanContext, publishing *amqp.Publishing) error {
+	if publishing.Headers == nil {
+		publishing.Headers = make(amqp.Table)
+	}
 	c := amqpHeaderCarrier(publishing.Headers)
 	return opentracing.GlobalTracer().Inject(spanCtx, opentracing.TextMap, c)
 }
