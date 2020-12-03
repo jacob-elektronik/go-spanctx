@@ -22,13 +22,18 @@ func (c sqsInjectAttributeCarrier) ForeachKey(handler func(key, val string) erro
 }
 
 func (c sqsInjectAttributeCarrier) Set(key, val string) {
-	c[key].DataType = aws.String("String")
-	c[key].StringValue = aws.String(val)
+	c[key] = &sqs.MessageAttributeValue{
+		DataType:    aws.String("String"),
+		StringValue: aws.String(val),
+	}
 }
 
 func AddToSQSMessageInput(spanCtx opentracing.SpanContext, pubInput *sqs.SendMessageInput) error {
-	if spanCtx == nil {
+	if spanCtx == nil || pubInput == nil {
 		return nil
+	}
+	if pubInput.MessageAttributes == nil {
+		pubInput.MessageAttributes = make(sqsInjectAttributeCarrier)
 	}
 	c := sqsInjectAttributeCarrier(pubInput.MessageAttributes)
 	return opentracing.GlobalTracer().Inject(spanCtx, opentracing.TextMap, c)

@@ -7,9 +7,9 @@ import (
 	"github.com/opentracing/opentracing-go"
 )
 
-type snsAttributeInjectCarrier map[string]*sns.MessageAttributeValue
+type snsInjectAttributeCarrier map[string]*sns.MessageAttributeValue
 
-func (c snsAttributeInjectCarrier) ForeachKey(handler func(key, val string) error) error {
+func (c snsInjectAttributeCarrier) ForeachKey(handler func(key, val string) error) error {
 	for k, val := range c {
 		if *val.DataType != "String" {
 			continue
@@ -21,27 +21,33 @@ func (c snsAttributeInjectCarrier) ForeachKey(handler func(key, val string) erro
 	return nil
 }
 
-func (c snsAttributeInjectCarrier) Set(key, val string) {
-	c[key].DataType = aws.String("String")
-	c[key].StringValue = aws.String(val)
+func (c snsInjectAttributeCarrier) Set(key, val string) {
+	c[key] = &sns.MessageAttributeValue{
+		DataType:    aws.String("String"),
+		StringValue: aws.String(val),
+	}
 }
 
 func AddToSNSPublishInput(spanCtx opentracing.SpanContext, pubInput *sns.PublishInput) error {
-	if spanCtx == nil {
+	if spanCtx == nil || pubInput == nil {
 		return nil
 	}
-	c := snsAttributeInjectCarrier(pubInput.MessageAttributes)
+	if pubInput.MessageAttributes == nil {
+		pubInput.MessageAttributes = make(snsInjectAttributeCarrier)
+	}
+	c := snsInjectAttributeCarrier(pubInput.MessageAttributes)
 	return opentracing.GlobalTracer().Inject(spanCtx, opentracing.TextMap, c)
 }
 
-type snsAttributeExtractCarrier map[string]interface{}
+type snsExtractAttributeCarrier map[string]interface{}
 
-func (c snsAttributeExtractCarrier) ForeachKey(handler func(key, val string) error) error {
-	for k, val := range c {
-		v, ok := val.(string)
-		if !ok {
+func (c snsExtractAttributeCarrier) ForeachKey(handler func(key, val string) error) error {
+	for k, raw := range c {
+		attrValueMap, ok := raw.(map[string]interface{})
+		if !ok || attrValueMap["Type"] != "String" {
 			continue
 		}
+		v := attrValueMap["Value"].(string)
 		if err := handler(k, v); err != nil {
 			return err
 		}
@@ -50,6 +56,6 @@ func (c snsAttributeExtractCarrier) ForeachKey(handler func(key, val string) err
 }
 
 func GetFromSNSEvent(event events.SNSEvent) (opentracing.SpanContext, error) {
-	c := snsAttributeExtractCarrier(event.Records[0].SNS.MessageAttributes)
+	c := snsExtractAttributeCarrier(event.Records[0].SNS.MessageAttributes)
 	return opentracing.GlobalTracer().Extract(opentracing.TextMap, c)
 }

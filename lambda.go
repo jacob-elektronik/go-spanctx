@@ -43,6 +43,7 @@ func AddToLambdaInvokeInput(spanCtx opentracing.SpanContext, input *lambda.Invok
 	if !hasReqRespInvocationType(input) {
 		return ErrorUnsupportedInvocationType
 	}
+
 	jaegerSpanCtx, ok := spanCtx.(jaeger.SpanContext)
 	if !ok {
 		return ErrorJaegerSpanContextExpected
@@ -73,16 +74,15 @@ func GetFromLambdaContext(ctx context.Context) (opentracing.SpanContext, error) 
 		return nil, nil
 	}
 	lambdaContext, ok := lambdacontext.FromContext(ctx)
-	if !ok {
+	if !ok || len(lambdaContext.ClientContext.Custom) == 0 {
 		return nil, nil
 	}
-	if len(lambdaContext.ClientContext.Custom) == 0 {
-		return nil, nil
-	}
+
 	tmpCtx, err := jaeger.ContextFromString(lambdaContext.ClientContext.Custom[traceIDKey])
 	if err != nil {
 		return nil, err
 	}
+
 	baggage := make(map[string]string, len(lambdaContext.ClientContext.Custom)-1)
 	for k, v := range lambdaContext.ClientContext.Custom {
 		if strings.HasPrefix(k, baggagePrefix) {
