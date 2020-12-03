@@ -3,10 +3,8 @@ package spanctx
 import (
 	"context"
 	"encoding/base64"
-	"errors"
-
 	"encoding/json"
-
+	"errors"
 	"strings"
 
 	"github.com/aws/aws-lambda-go/lambdacontext"
@@ -37,7 +35,7 @@ func hasReqRespInvocationType(input *lambda.InvokeInput) bool {
 }
 
 func AddToLambdaInvokeInput(spanCtx opentracing.SpanContext, input *lambda.InvokeInput) error {
-	if spanCtx == nil {
+	if spanCtx == nil || input == nil {
 		return nil
 	}
 	if !hasReqRespInvocationType(input) {
@@ -49,10 +47,13 @@ func AddToLambdaInvokeInput(spanCtx opentracing.SpanContext, input *lambda.Invok
 		return ErrorJaegerSpanContextExpected
 	}
 
-	clientContext := make(map[string]string)
-	clientContext[traceIDKey] = jaegerSpanCtx.String()
+	clientContext := struct {
+		Custom map[string]string `json:"custom"`
+	}{Custom: make(map[string]string)}
+
+	clientContext.Custom[traceIDKey] = jaegerSpanCtx.String()
 	jaegerSpanCtx.ForeachBaggageItem(func(k, v string) bool {
-		clientContext[baggagePrefix+k] = v
+		clientContext.Custom[baggagePrefix+k] = v
 		return true
 	})
 
